@@ -167,7 +167,7 @@ class LibraryApp:
             r = requests.get(AUTH_URL, timeout=5)
             auth_data = r.json()
             if not auth_data.get("enabled", False) or user not in auth_data.get("allowed_users", []):
-                self.log("❌ 权限确认失败：您的凭证未在校方允许名单内", "ERROR")
+                self.log("❌ 权限确认失败：您的凭证未在允许名单内", "ERROR")
                 self.root.after(0, lambda: self.btn_start.config(state="normal"))
                 return
             self.log("✅ 权限确认通过，允许访问校方资源系统", "SUCCESS")
@@ -278,7 +278,7 @@ class LibraryApp:
 
     def send_final_email(self, user, info):
         """完全按照 monitor_final.py 的 ssl 发信逻辑"""
-        msg_text = f"🎉 资源预约最终确认成功！\n\n凭证：{user}\n资源名称：{info['space']}\n生效时间：{info['start']}\n流水单号：{info['id']}\n最终状态：{info['status']}"
+        msg_text = f"🎉 资源预约最终确认成功！\n\n学号：{user}\n资源名称：{info['space']}\n生效时间：{info['start']}\n流水单号：{info['id']}\n最终状态：{info['status']}"
         self.log(msg_text, "SUCCESS")
         
         email_to = self.ent_email.get().strip()
@@ -286,7 +286,7 @@ class LibraryApp:
 
         try:
             mime = MIMEText(msg_text, "plain", "utf-8")
-            mime["Subject"] = "【系统通知】预约任务成功核实"
+            mime["Subject"] = "【选座通知】预约任务成功核实"
             mime["From"] = SMTP_SENDER
             mime["To"] = email_to
 
