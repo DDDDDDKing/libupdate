@@ -57,7 +57,7 @@ class LibraryApp:
         
         header = tk.Frame(self.root, bg="#2C3E50", height=80)
         header.pack(fill="x")
-        ttk.Label(header, text="XX大学资源自动化助手", style="Header.TLabel").pack(pady=5)
+        ttk.Label(header, text="选座助手", style="Header.TLabel").pack(pady=5)
         ttk.Label(header, text="提示：00:00-06:00 系统维护期程序将自动休眠", style="Warn.TLabel").pack()
 
         main_frame = ttk.Frame(self.root, padding=15)
@@ -67,7 +67,7 @@ class LibraryApp:
         login_lf = ttk.LabelFrame(main_frame, text=" 认证配置 ")
         login_lf.pack(fill="x", pady=5)
         opts = {'padx': 5, 'pady': 5}
-        ttk.Label(login_lf, text="凭证:").grid(row=0, column=0, sticky="e", **opts)
+        ttk.Label(login_lf, text="学号:").grid(row=0, column=0, sticky="e", **opts)
         self.ent_user = ttk.Entry(login_lf, width=20)
         self.ent_user.grid(row=0, column=1, **opts)
         ttk.Label(login_lf, text="密码:").grid(row=0, column=2, sticky="e", **opts)
