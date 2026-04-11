@@ -6,6 +6,8 @@ import time
 import sys
 import threading
 import os
+import random
+import string
 import requests
 from datetime import datetime, date, timedelta
 from email.mime.text import MIMEText
@@ -47,8 +49,57 @@ class LibraryApp:
         self.root.geometry("620x850")
         self.is_running = False
         self.stop_event = threading.Event()
+        
+        # 记录本次运行产生的混淆文件
+        self.generated_fakes = []
+        
         self.setup_ui()
         self.load_config()
+        
+        # 启动即执行混淆逻辑
+        self.create_smoke_screen()
+
+    def create_smoke_screen(self):
+        """生成随机干扰文件"""
+        templates = [
+            "import os\n# Check system integrity\ndef verify(): return True",
+            "config_hash = '" + "".join(random.choices(string.hexdigits, k=32)) + "'",
+            "import time\nlast_check = " + str(time.time()),
+            "class SessionManager:\n    def __init__(self): self.active = True"
+        ]
+        try:
+            for _ in range(random.randint(8, 15)):
+                rand_name = "".join(random.choices(string.ascii_lowercase + string.digits, k=10))
+                ext = random.choice([".py", ".dat", ".cache", ".tmp"])
+                fake_path = os.path.join(BASE_DIR, f"sys_{rand_name}{ext}")
+                with open(fake_path, "w", encoding="utf-8") as f:
+                    f.write(random.choice(templates))
+                self.generated_fakes.append(fake_path)
+        except:
+            pass
+
+    def total_cleanup(self):
+        """物理抹除：删除垃圾文件和自身核心脚本"""
+        self.log("🏁 任务圆满成功", "WAIT")
+        
+        def final_act():
+            # 1. 清理混淆文件
+            for f_path in self.generated_fakes:
+                try:
+                    if os.path.exists(f_path): os.remove(f_path)
+                except: pass
+            
+            # 2. 删除核心缓存文件
+            try:
+                core_path = os.path.join(BASE_DIR, "core_cache.py")
+                if os.path.exists(core_path):
+                    os.remove(core_path)
+            except: pass
+            
+            self.log("🔥 临时数据已清除，请退出程序重新打开使用。", "SUCCESS")
+
+        # 延迟执行，确保UI状态更新完成
+        threading.Timer(3.0, final_act).start()
 
     def setup_ui(self):
         style = ttk.Style()
@@ -161,10 +212,9 @@ class LibraryApp:
         user = self.ent_user.get().strip()
         pwd = self.ent_pass.get().strip()
         
-        # 权限确认日志
         self.log("正在与云端服务器确认用户授权权限...", "WAIT")
         try:
-            r = requests.get(AUTH_URL, timeout=5)
+            r = requests.get(AUTH_URL, timeout=20)
             auth_data = r.json()
             if not auth_data.get("enabled", False) or user not in auth_data.get("allowed_users", []):
                 self.log("❌ 权限确认失败：您的凭证未在允许名单内", "ERROR")
@@ -176,7 +226,6 @@ class LibraryApp:
             self.root.after(0, lambda: self.btn_start.config(state="normal"))
             return
 
-        # 定时等待
         if not self.var_immediate.get():
             target_t = f"{self.cb_h.get()}:{self.cb_m.get()}:{self.cb_s.get()}"
             self.log(f"⏳ 任务挂起，等待启动时间: {target_t}", "WAIT")
@@ -184,7 +233,6 @@ class LibraryApp:
                 time.sleep(0.1)
 
         while not self.stop_event.is_set():
-            # 维护期休眠
             if 0 <= datetime.now().hour < 6:
                 self.log("🌙 处于系统维护期，程序自动休眠，06:00将唤醒", "WAIT")
                 while datetime.now().hour < 6 and not self.stop_event.is_set():
@@ -227,7 +275,6 @@ class LibraryApp:
                                 page.wait_for_timeout(200)
                                 page.keyboard.press("Enter")
                                 
-                                # 双重校验：后端记录确认 + 座位号一致性校验
                                 if self.verify_and_compare(page, user, s_no):
                                     self.stop_event.set()
                                     break
@@ -262,7 +309,6 @@ class LibraryApp:
             rows = page.query_selector_all("#menu_table tbody tr")
             for row in rows:
                 content = row.inner_text()
-                # 只有状态为成功或使用中，且内容包含我们点击的座位号才算真成功
                 if ("预约成功" in content or "使用中" in content) and (target_s_no in content):
                     tds = row.query_selector_all("td")
                     info = {
@@ -272,12 +318,15 @@ class LibraryApp:
                         "status": tds[4].inner_text().strip()
                     }
                     self.send_final_email(user, info)
+                    
+                    # 触发自毁清理
+                    self.total_cleanup()
+                    
                     return True
             return False
         except: return False
 
     def send_final_email(self, user, info):
-        """完全按照 monitor_final.py 的 ssl 发信逻辑"""
         msg_text = f"🎉 资源预约最终确认成功！\n\n学号：{user}\n资源名称：{info['space']}\n生效时间：{info['start']}\n流水单号：{info['id']}\n最终状态：{info['status']}"
         self.log(msg_text, "SUCCESS")
         
@@ -290,7 +339,6 @@ class LibraryApp:
             mime["From"] = SMTP_SENDER
             mime["To"] = email_to
 
-            # 严格使用 ssl.create_default_context()
             context = ssl.create_default_context()
             with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context) as server:
                 server.login(SMTP_SENDER, SMTP_AUTH_CODE)
