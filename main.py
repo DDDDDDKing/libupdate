@@ -254,12 +254,26 @@ class LibraryApp:
                     try: page.click("#nav-date > a.btn.btn-default.active.area_day", timeout=3000)
                     except: pass
 
+# ... 此处保持原样 (try_login 之后，target_seats 之后) ...
+
                     target_seats = self.parse_seats(self.ent_seats.get())
+                    
+                    # 引入交替计数器
+                    action_counter = 0
                     
                     while not self.stop_event.is_set():
                         if datetime.now().hour == 0: break
                         
-                        page.reload()
+                        # 交替逻辑：偶数刷新，奇数点击
+                        if action_counter % 2 == 0:
+                            page.reload()
+                        else:
+                            try:
+                                page.click("#nav-date > a.btn.btn-default.active.area_day", timeout=3000)
+                            except:
+                                page.reload() # 如果点击失败则降级为刷新
+                        
+                        action_counter += 1
                         page.wait_for_timeout(500)
                         
                         seats = page.query_selector_all("li.seat.ava-icon")
